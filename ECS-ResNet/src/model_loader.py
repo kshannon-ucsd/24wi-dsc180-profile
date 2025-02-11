@@ -14,8 +14,8 @@ if DEPLOYMENT_ENV is None:
     load_dotenv(env_path)
 
 DEPLOYMENT_ENV = os.environ.get("DEPLOYMENT_ENV") 
-S3_BUCKET_NAME = os.environ.get("BUCKET_Name")
-MODEL_FILE_NAME = os.environ.get("MODEL_FILE")
+S3_BUCKET_NAME = os.environ.get("S3_BUCKET_NAME")
+MODEL_FILE_NAME = os.environ.get("MODEL_FILE_NAME")
 
 if DEPLOYMENT_ENV == "local":
     MODEL_PATH = f"../models/{MODEL_FILE_NAME}"
