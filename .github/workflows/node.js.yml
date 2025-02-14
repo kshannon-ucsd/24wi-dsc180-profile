@@ -1,40 +1,44 @@
-name: Node.js CI
+name: Deploy Next.js to GitHub Pages
 
 on:
   push:
-    branches: [ website_dev ]
-
+    branches:
+      - website_dev  # or your default branch
 
 permissions:
   contents: write
-  
+
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v3
-      
+      # 1. Check out the repository
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      # 2. Set up Node.js environment
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '20'
-          
-      - name: Install dependencies
+          node-version: '20'  # or your desired Node version
+
+      # 3. Install dependencies
+      - name: Install Dependencies
         run: npm ci
 
-      - name: Install gh-pages
-        run: npm install gh-pages --save-dev
-
-      - name: Configure Git
-        run: |
-          git config --global user.email "github-actions@github.com"
-          git config --global user.name "GitHub Actions"
-      
-      - name: Build
+      # 4. Build the Next.js app
+      - name: Build Next.js App
         run: npm run build
-        
-      - name: Deploy
-        uses: JamesIves/github-pages-deploy-action@v4
+
+      # 5. Export the app as a static site (ensure your package.json has the "export" script)
+      - name: Export Static Site
+        run: npm run export
+
+      # 6. Deploy the exported site from the "out" directory to the gh-pages branch
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
         with:
-          folder: out
-          branch: gh-pages
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./out
+          publish_branch: gh-pages

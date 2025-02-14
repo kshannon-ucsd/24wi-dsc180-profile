@@ -2,6 +2,7 @@
   "name": "sepsis-detection-app",
   "version": "0.1.0",
   "private": true,
+  "homepage": "https://kshannon-ucsd.github.io/24wi-dsc180-profile",
   "scripts": {
     "build": "next build",
     "predeploy": "npm run build",
