@@ -4,6 +4,10 @@ on:
   push:
     branches: [ website_dev ]
 
+
+permissions:
+  contents: write
+  
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
