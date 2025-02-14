@@ -17,7 +17,15 @@ jobs:
           
       - name: Install dependencies
         run: npm ci
-        
+
+      - name: Install gh-pages
+        run: npm install gh-pages --save-dev
+
+      - name: Configure Git
+        run: |
+          git config --global user.email "github-actions@github.com"
+          git config --global user.name "GitHub Actions"
+      
       - name: Build
         run: npm run build
         
