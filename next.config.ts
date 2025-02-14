@@ -11,6 +11,7 @@ const nextConfig: NextConfig = {
   // This helps GitHub Pages resolve paths to static files correctly
   trailingSlash: true,
   // Other Next.js config options can go here...
+  output: 'export'
 };
 
 export default nextConfig;
