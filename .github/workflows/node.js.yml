@@ -31,9 +31,6 @@ jobs:
       - name: Build Next.js App
         run: npm run build
 
-      # 5. Export the app as a static site (ensure your package.json has the "export" script)
-      - name: Export Static Site
-        run: npm run export
 
       # 6. Deploy the exported site from the "out" directory to the gh-pages branch
       - name: Deploy to GitHub Pages
