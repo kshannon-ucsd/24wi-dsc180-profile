@@ -7,10 +7,9 @@ import { Button } from './button';
 import { Input } from './input';
 import { Label } from './label';
 import { Progress } from './progress';
-import { AlertCircle, Upload, ChevronRight, Activity, LineChart, BrainCircuit, Info } from 'lucide-react';
+import { AlertCircle, Upload, ChevronRight, Activity, LineChart, BrainCircuit, Info, RefreshCw } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from './alert';
 
-// Background animation component
 const AnimatedBackground = () => (
   <div className="fixed inset-0 -z-10 overflow-hidden">
     <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-white">
@@ -51,91 +50,137 @@ const InfoCard: React.FC<InfoCardProps> = ({ title, children }) => (
 );
 
 const stages = [
-  { id: 1, name: 'Upload & Preprocessing', icon: Upload, description: 'Preparing and validating input data' },
-  { id: 2, name: 'Lung Anomaly Detection', icon: Activity, description: 'Analyzing chest X-ray with ResNet model' },
-  { id: 3, name: 'Metadata Analysis', icon: LineChart, description: 'Processing patient vitals and clinical data' },
+  { id: 1, name: 'Image Upload & Validation', icon: Upload, description: 'Validating PNG format and image quality' },
+  { id: 2, name: 'Anomaly Detection', icon: Activity, description: 'Analyzing chest X-ray for anomalies' },
+  { id: 3, name: 'Clinical Data Analysis', icon: LineChart, description: 'Processing patient lab results and vitals' },
   { id: 4, name: 'Risk Assessment', icon: BrainCircuit, description: 'Calculating final sepsis risk predictions' }
 ];
 
+interface PatientMetadata {
+  bilirubin: string;
+  creatinine: string;
+  heart_rate: string;
+  inr: string;
+  mbp: string;
+  platelet: string;
+  ptt: string;
+  resp_rate: string;
+  sbp: string;
+  wbc: string;
+}
+
 const ModelDemo = () => {
-  const [currentFile, setCurrentFile] = useState(null);
+  const [currentFile, setCurrentFile] = useState<string | null>(null);
+  const [fileError, setFileError] = useState<string>('');
   const [currentStage, setCurrentStage] = useState(0);
-  const [prediction, setPrediction] = useState(null);
-  const [metadata, setMetadata] = useState({
-    temperature: '',
-    heartRate: '',
-    bloodPressure: '',
-    respiratoryRate: '',
-    oxygenSaturation: ''
+  const [anomalyResult, setAnomalyResult] = useState<string | null>(null);
+  const [sepsisRisk, setSepsisRisk] = useState<any>(null);
+  const [showMetadataForm, setShowMetadataForm] = useState(false);
+  const [metadata, setMetadata] = useState<PatientMetadata>({
+    bilirubin: '',
+    creatinine: '',
+    heart_rate: '',
+    inr: '',
+    mbp: '',
+    platelet: '',
+    ptt: '',
+    resp_rate: '',
+    sbp: '',
+    wbc: ''
   });
 
-  // Placeholder for the first model (image processing)
-  // const processImage = async (image) => {
-  //   // TODO: Implement image processing logic
-  //   return new Promise((resolve) => {
-  //     setTimeout(() => resolve({ anomalyScore: 0.75 }), 2000);
-  //   });
-  // };
+  const resetAnalysis = () => {
+    setCurrentStage(0);
+    setAnomalyResult(null);
+    setSepsisRisk(null);
+    setShowMetadataForm(false);
+  };
 
-  // Placeholder for the second model (metadata processing)
-  // const processMetadata = async (imageResults, metadata) => {
-  //   // TODO: Implement metadata processing logic
-  //   return new Promise((resolve) => {
-  //     setTimeout(() => resolve({
-  //       risk1Day: 0.15,
-  //       risk2Day: 0.25,
-  //       risk3PlusDays: 0.35
-  //     }), 2000);
-  //   });
-  // };
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    setFileError('');
+    resetAnalysis();
+    
+    if (file) {
+      if (!file.type.includes('png')) {
+        setFileError('Please upload only PNG images');
+        return;
+      }
+      
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setCurrentFile(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
-  // const handleFileChange = (event) => {
-  //   const file = event.target.files[0];
-  //   if (file) {
-  //     setCurrentFile(file);
-  //     // Create object URL for preview
-  //     const reader = new FileReader();
-  //     reader.onloadend = () => {
-  //       setCurrentFile(reader.result);
-  //     };
-  //     reader.readAsDataURL(file);
-  //   }
-  // };
+  const handleMetadataChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setMetadata({
+      ...metadata,
+      [e.target.name]: e.target.value
+    });
+  };
 
-  // const handleMetadataChange = (e) => {
-  //   setMetadata({
-  //     ...metadata,
-  //     [e.target.name]: e.target.value
-  //   });
-  // };
-
-  const runDemo = async () => {
+  // First stage: Anomaly Detection
+  const runAnomalyDetection = async () => {
     setCurrentStage(1);
-    // Stage 1: Upload & Preprocessing
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
+    await new Promise(resolve => setTimeout(resolve, 1000));
     setCurrentStage(2);
-    // Stage 2: Lung Anomaly Detection
-    // const imageResults = await processImage(currentFile);
-    
+    // Simulated API call for anomaly detection
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    setAnomalyResult('Anomaly Detected');
+    setShowMetadataForm(true);
+  };
+
+  // Second stage: Sepsis Risk Assessment
+  const runSepsisRiskAssessment = async () => {
     setCurrentStage(3);
-    // Stage 3: Metadata Analysis
     await new Promise(resolve => setTimeout(resolve, 1500));
-    
     setCurrentStage(4);
-    // Stage 4: Final Risk Assessment
-    // const results = await processMetadata(imageResults, metadata);
-    // setPrediction(results);
+    // Simulated API call for sepsis risk assessment
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    setSepsisRisk({
+      risk1Day: 0.15,
+      risk2Day: 0.25,
+      risk3PlusDays: 0.35
+    });
   };
 
   const loadExample = () => {
-    // setCurrentFile('/api/placeholder/400/400');
+    setCurrentFile('./assets/xray.png');
+    resetAnalysis();
     setMetadata({
-      temperature: '38.5',
-      heartRate: '95',
-      bloodPressure: '110/70',
-      respiratoryRate: '22',
-      oxygenSaturation: '94'
+      bilirubin: '1.2',
+      creatinine: '1.1',
+      heart_rate: '88',
+      inr: '1.1',
+      mbp: '85',
+      platelet: '150',
+      ptt: '30',
+      resp_rate: '18',
+      sbp: '120',
+      wbc: '8.5'
+    });
+  };
+  const resetAll = () => {
+    setCurrentFile(null);
+    setFileError('');
+    setCurrentStage(0);
+    setAnomalyResult(null);
+    setSepsisRisk(null);
+    setShowMetadataForm(false);
+    setMetadata({
+      bilirubin: '',
+      creatinine: '',
+      heart_rate: '',
+      inr: '',
+      mbp: '',
+      platelet: '',
+      ptt: '',
+      resp_rate: '',
+      sbp: '',
+      wbc: ''
     });
   };
 
@@ -144,331 +189,255 @@ const ModelDemo = () => {
       <AnimatedBackground />
       <div className="container mx-auto p-4 relative">
         <Tabs defaultValue="demo" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-1">
             <TabsTrigger value="demo">Model Demo</TabsTrigger>
-            <TabsTrigger value="architecture">Cloud Architecture</TabsTrigger>
           </TabsList>
 
           <TabsContent value="demo">
             <div className="space-y-4">
               <InfoCard title="About This Demo">
-                This interactive demo showcases our sepsis detection system that combines chest X-ray analysis with patient vitals 
-                to predict sepsis risk. Upload an image or use our example data to see the model in action.
+                This two-stage analysis system first detects anomalies in chest X-rays, then combines these results 
+                with patient lab results and vitals to assess sepsis risk. Upload a PNG image to begin the analysis.
               </InfoCard>
 
               <Card>
-                <CardHeader>
-                  <CardTitle>Sepsis Detection Model Demo</CardTitle>
-                  <CardDescription className="space-y-2">
-                    <p>Our system uses a two-stage approach to predict sepsis risk:</p>
-                    <ul className="list-disc pl-4 space-y-1">
-                      <li>First, we analyze chest X-rays using a ResNet model to detect lung anomalies</li>
-                      <li>Then, we combine these results with patient vitals for comprehensive risk assessment</li>
-                    </ul>
-                  </CardDescription>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle>Sepsis Detection Model Demo</CardTitle>
+                    <CardDescription>
+                      Our two-stage approach combines chest X-ray analysis with clinical data for comprehensive sepsis risk assessment.
+                    </CardDescription>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    onClick={resetAll}
+                    className="h-8 w-8"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                  </Button>
                 </CardHeader>
-                <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div className="flex flex-col space-y-2">
-                    <Label>Chest X-Ray Image</Label>
-                    <div className="border-2 border-dashed rounded-lg p-4 text-center">
-                      {currentFile ? (
-                        <img 
-                          src={currentFile} 
-                          alt="X-ray preview" 
-                          className="max-w-full h-auto mx-auto"
-                        />
-                      ) : (
-                        <div className="py-8">
-                          <Upload className="mx-auto h-12 w-12 text-gray-400" />
-                          <p className="mt-2">Drop your X-ray image here or click to upload</p>
+                <CardContent className="p-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                      <div className="flex flex-col space-y-2">
+                        <Label>Chest X-Ray Image (PNG only)</Label>
+                        <div className="border-2 border-dashed rounded-lg p-4 text-center">
+                          {currentFile ? (
+                            <img 
+                              src={currentFile} 
+                              alt="X-ray preview" 
+                              className="max-w-full h-80 mx-auto w-80"
+                            />
+                          ) : (
+                            <div className="py-8">
+                              <Upload className="mx-auto h-12 w-12 text-gray-400" />
+                              <p className="mt-2">Drop your PNG X-ray image here or click to upload</p>
+                            </div>
+                          )}
+                          <Input
+                            type="file"
+                            accept=".png"
+                            onChange={handleFileChange}
+                            className="mt-4"
+                          />
+                          {fileError && (
+                            <p className="text-red-500 mt-2">{fileError}</p>
+                          )}
+                        </div>
+                      </div>
+
+                      {showMetadataForm && (
+                        <div className="space-y-4">
+                          <Label>Patient Lab Results & Vitals</Label>
+                          <div className="grid grid-cols-2 gap-4">
+                            {Object.entries(metadata).map(([key, value]) => (
+                              <div key={key}>
+                                <Label>{key.replace('_', ' ').toUpperCase()}</Label>
+                                <Input
+                                  name={key}
+                                  value={value}
+                                  onChange={handleMetadataChange}
+                                  placeholder="0.0"
+                                />
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       )}
-                      <Input
-                        type="file"
-                        accept="image/*"
-                        // onChange={handleFileChange}
-                        className="mt-4"
-                      />
-                    </div>
-                  </div>
 
-                  <div className="space-y-4">
-                    <Label>Patient Vitals</Label>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label>Temperature (°C)</Label>
-                        <Input
-                          name="temperature"
-                          value={metadata.temperature}
-                          // onChange={handleMetadataChange}
-                          placeholder="37.0"
-                        />
-                      </div>
-                      <div>
-                        <Label>Heart Rate (bpm)</Label>
-                        <Input
-                          name="heartRate"
-                          value={metadata.heartRate}
-                          // onChange={handleMetadataChange}
-                          placeholder="75"
-                        />
-                      </div>
-                      <div>
-                        <Label>Blood Pressure</Label>
-                        <Input
-                          name="bloodPressure"
-                          value={metadata.bloodPressure}
-                          // onChange={handleMetadataChange}
-                          placeholder="120/80"
-                        />
-                      </div>
-                      <div>
-                        <Label>Respiratory Rate</Label>
-                        <Input
-                          name="respiratoryRate"
-                          value={metadata.respiratoryRate}
-                          // onChange={handleMetadataChange}
-                          placeholder="16"
-                        />
-                      </div>
-                      <div>
-                        <Label>O2 Saturation (%)</Label>
-                        <Input
-                          name="oxygenSaturation"
-                          value={metadata.oxygenSaturation}
-                          // onChange={handleMetadataChange}
-                          placeholder="98"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex space-x-4">
-                    <Button onClick={runDemo} className="flex-1">
-                      Run Analysis
-                    </Button>
-                    <Button onClick={loadExample} variant="outline" className="flex-1">
-                      Load Example
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="space-y-6">
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">Analysis Progress</h3>
-                    <div className="space-y-6">
-                      {stages.map((stage) => {
-                        const StageIcon = stage.icon;
-                        const isActive = currentStage >= stage.id;
-                        const isComplete = currentStage > stage.id;
-                        
-                        return (
-                          <div 
-                            key={stage.id}
-                            className={`flex items-center space-x-4 ${
-                              isActive ? 'text-primary' : 'text-gray-400'
-                            }`}
+                      <div className="flex space-x-4">
+                        {!anomalyResult && (
+                          <Button 
+                            onClick={runAnomalyDetection} 
+                            className="flex-1"
+                            disabled={!currentFile}
                           >
-                            <div className={`p-2 rounded-full ${
-                              isActive ? 'bg-primary/20' : 'bg-gray-100'
-                            }`}>
-                              <StageIcon className="h-6 w-6" />
+                            Run Anomaly Detection
+                          </Button>
+                        )}
+                        {anomalyResult && !sepsisRisk && (
+                          <Button 
+                            onClick={runSepsisRiskAssessment} 
+                            className="flex-1"
+                          >
+                            Run Sepsis Risk Assessment
+                          </Button>
+                        )}
+                        <Button onClick={loadExample} variant="outline" className="flex-1">
+                          Load Example
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-6">
+                      {/* Analysis Progress */}
+                      <div className="space-y-4">
+                        <h3 className="text-lg font-semibold">Analysis Progress</h3>
+                        <div className="space-y-4">
+                          {stages.map((stage) => {
+                            const StageIcon = stage.icon;
+                            const isActive = currentStage >= stage.id;
+                            const isComplete = currentStage > stage.id || 
+                              (stage.id === 2 && anomalyResult) || 
+                              (stage.id === 4 && sepsisRisk);
+                            
+                            return (
+                              <div 
+                                key={stage.id}
+                                className={`flex items-center space-x-4 ${
+                                  isActive ? 'text-primary' : 'text-gray-400'
+                                }`}
+                              >
+                                <div className={`p-2 rounded-full ${
+                                  isActive ? 'bg-primary/20' : 'bg-gray-100'
+                                }`}>
+                                  <StageIcon className="h-6 w-6" />
+                                </div>
+                                <div className="flex-1">
+                                  <p className="font-medium">{stage.name}</p>
+                                  <p className="text-sm text-gray-500">{stage.description}</p>
+                                  {isComplete && (
+                                    <p className="text-sm text-green-600">Completed</p>
+                                  )}
+                                </div>
+                                {isActive && !isComplete && (
+                                  <Progress value={66} className="w-20" />
+                                )}
+                                {isComplete && (
+                                  <Progress value={100} className="w-20" />
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Results Section */}
+                      {anomalyResult && (
+                        <Card className="mt-0">
+                          <CardHeader>
+                            <CardTitle>Stage 1: Anomaly Detection Results</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <Alert>
+                              <AlertCircle className="h-4 w-4" />
+                              <AlertTitle>Analysis Complete</AlertTitle>
+                              <AlertDescription>{anomalyResult}</AlertDescription>
+                            </Alert>
+                          </CardContent>
+                        </Card>
+                      )}
+
+                      {sepsisRisk && (
+                        <Card className="mt-0">
+                          <CardHeader>
+                            <CardTitle>Stage 2: Sepsis Risk Assessment</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="space-y-4">
+                              <div>
+                                <Label>1-Day Risk</Label>
+                                <Progress value={sepsisRisk.risk1Day * 100} className="mt-2" />
+                                <p className="text-sm text-gray-500 mt-1">
+                                  {(sepsisRisk.risk1Day * 100).toFixed(1)}% probability
+                                </p>
+                              </div>
+                              <div>
+                                <Label>2-Day Risk</Label>
+                                <Progress value={sepsisRisk.risk2Day * 100} className="mt-2" />
+                                <p className="text-sm text-gray-500 mt-1">
+                                  {(sepsisRisk.risk2Day * 100).toFixed(1)}% probability
+                                </p>
+                              </div>
+                              <div>
+                                <Label>3+ Days Risk</Label>
+                                <Progress value={sepsisRisk.risk3PlusDays * 100} className="mt-2" />
+                                <p className="text-sm text-gray-500 mt-1">
+                                  {(sepsisRisk.risk3PlusDays * 100).toFixed(1)}% probability
+                                </p>
+                              </div>
                             </div>
-                            <div className="flex-1">
-                              <p className="font-medium">{stage.name}</p>
-                              {isComplete && (
-                                <p className="text-sm text-gray-500">Completed</p>
-                              )}
-                            </div>
-                            {isActive && !isComplete && (
-                              <Progress value={66} className="w-20" />
-                            )}
-                          </div>
-                        );
-                      })}
+                          </CardContent>
+                        </Card>
+                      )}
                     </div>
                   </div>
-
-                  {prediction && (
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Risk Assessment Results</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-4">
-                          <div>
-                            <Label>1-Day Risk</Label>
-                            {/* <Progress value={prediction.risk1Day * 100} className="mt-2" /> */}
-                            <p className="text-sm text-gray-500 mt-1">
-                              {/* {(prediction.risk1Day * 100).toFixed(1)}% probability */}
-                            </p>
-                          </div>
-                          <div>
-                            <Label>2-Day Risk</Label>
-                            {/* <Progress value={prediction.risk2Day * 100} className="mt-2" /> */}
-                            <p className="text-sm text-gray-500 mt-1">
-                              {/* {(prediction.risk2Day * 100).toFixed(1)}% probability */}
-                            </p>
-                          </div>
-                          <div>
-                            <Label>3+ Days Risk</Label>
-                            {/* <Progress value={prediction.risk3PlusDays * 100} className="mt-2" /> */}
-                            <p className="text-sm text-gray-500 mt-1">
-                              {/* {(prediction.risk3PlusDays * 100).toFixed(1)}% probability */}
-                            </p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
-                </div>
-              </div>
                 </CardContent>
               </Card>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card className="bg-blue-50">
+                <Card className="bg-blue-50 h-full">
                   <CardHeader>
-                    <CardTitle className="text-sm font-medium">Quick Tip</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    For best results, ensure X-ray images are clear and properly oriented. DICOM format is preferred.
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-blue-50">
-                  <CardHeader>
-                    <CardTitle className="text-sm font-medium">Normal Ranges</CardTitle>
+                    <CardTitle className="text-sm font-medium">Image Requirements</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <ul className="text-sm space-y-1">
-                      <li>Temperature: 36.5-37.5°C</li>
-                      <li>Heart Rate: 60-100 bpm</li>
-                      <li>Blood Pressure: 90/60-120/80</li>
-                      <li>Respiratory Rate: 12-20</li>
-                      <li>O2 Saturation: 95-100%</li>
+                      <li>PNG format only</li>
+                      <li>Clear, high-quality chest X-ray</li>
+                      <li>Proper orientation (AP/PA view)</li>
+                      <li>No artifacts or overlays</li>
                     </ul>
                   </CardContent>
                 </Card>
 
-                <Card className="bg-blue-50">
+                <Card className="bg-blue-50 h-full">
+                  <CardHeader>
+                    <CardTitle className="text-sm font-medium">Clinical Parameters</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="text-sm space-y-1">
+                      <li>Bilirubin: 0.3-1.2 mg/dL</li>
+                      <li>Creatinine: 0.7-1.3 mg/dL</li>
+                      <li>Heart Rate: 60-100 bpm</li>
+                      <li>INR: 0.8-1.2</li>
+                      <li>Mean BP: 70-100 mmHg</li>
+                      <li>Platelets: 150-450 K/µL</li>
+                      <li>PTT: 25-35 seconds</li>
+                      <li>Respiratory Rate: 12-20/min</li>
+                      <li>Systolic BP: 90-120 mmHg</li>
+                      <li>WBC: 4.5-11.0 K/µL</li>
+                    </ul>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-blue-50 h-full">
                   <CardHeader>
                     <CardTitle className="text-sm font-medium">Important Note</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    This is a demonstration tool. Always consult healthcare professionals for medical decisions.
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="architecture">
-            <div className="space-y-4">
-              <InfoCard title="Our Cloud Infrastructure">
-                Learn how we leverage AWS services to deliver a scalable, reliable, and secure sepsis detection system.
-                Our architecture ensures fast processing of medical images and real-time risk assessment.
-              </InfoCard>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Cloud Architecture</CardTitle>
-                  <CardDescription>
-                    A modern, serverless approach to medical image processing and analysis
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                <div className="space-y-6">
-                <img 
-                  src="/api/placeholder/800/400" 
-                  alt="Cloud Architecture Diagram"
-                  className="w-full rounded-lg shadow-lg"
-                />
-                
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Storage</CardTitle>
-                      <CardDescription>Amazon S3</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      Used for storing and managing chest X-ray images and associated metadata
-                    </CardContent>
-                  </Card>
-                  
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Deployment</CardTitle>
-                      <CardDescription>Amazon ECS</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      Containerization and deployment of trained models with scalability
-                    </CardContent>
-                  </Card>
-                  
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Delivery</CardTitle>
-                      <CardDescription>Amazon CloudFront</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      Fast and efficient content delivery for web interface and model outputs
-                    </CardContent>
-                  </Card>
-                </div>
-
-                <Alert>
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>Documentation Available</AlertTitle>
-                  <AlertDescription>
-                    For detailed information about our cloud infrastructure, visit our{" "}
-                    <a 
-                      href="d3i23sy0bznewr.cloudfront.net" 
-                      className="font-medium underline"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      internal documentation
-                    </a>
-                  </AlertDescription>
-                </Alert>
-              </div>
-                </CardContent>
-              </Card>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card className="bg-blue-50">
-                  <CardHeader>
-                    <CardTitle className="text-sm font-medium">High Availability</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    Our system is deployed across multiple availability zones for redundancy and reliability.
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-blue-50">
-                  <CardHeader>
-                    <CardTitle className="text-sm font-medium">Security</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    All data is encrypted in transit and at rest, following healthcare compliance standards.
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-blue-50">
-                  <CardHeader>
-                    <CardTitle className="text-sm font-medium">Scalability</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    Automatic scaling based on demand ensures consistent performance under any load.
+                    This is a clinical decision support tool. Results should be interpreted by healthcare professionals in conjunction with other clinical findings and patient history.
                   </CardContent>
                 </Card>
               </div>
             </div>
           </TabsContent>
         </Tabs>
+        <footer className="bg-pink-20 py-4 mt-8">
+        <div className="container mx-auto text-center text-gray-600">
+          &copy; {new Date().getFullYear()} Sepsis Risk Assessment | UC San Diego
+        </div>
+      </footer>
       </div>
     </>
   );
