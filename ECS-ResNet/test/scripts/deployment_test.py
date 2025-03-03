@@ -6,18 +6,29 @@ import os
 from dotenv import load_dotenv
 from pathlib import Path
 
-env_path = Path(__file__).parent.parent.parent / "config" / ".env"
-print(env_path)
+SCRIPT_DIR = Path(__file__).resolve().parent  
+ROOT_DIR = SCRIPT_DIR.parent.parent  
+DATA_DIR = ROOT_DIR / "test" / "data"  
 
+# Load .env file from config
+env_path = ROOT_DIR / "config" / ".env"
+print("Loading environment from:", env_path)
 load_dotenv(env_path)
 
-X_TEST_PATH = os.environ.get("X_TEST_PATH")
-Y_TEST_PATH = os.environ.get("Y_TEST_PATH")
+# Load test data paths from .env
+X_TEST_PATH = os.getenv("X_TEST_PATH")
+Y_TEST_PATH = os.getenv("Y_TEST_PATH")
+
+# Convert them to absolute paths
+X_TEST_PATH = (DATA_DIR / X_TEST_PATH).resolve()
+Y_TEST_PATH = (DATA_DIR / Y_TEST_PATH).resolve()
+
 DEPLOYMENT_ENV = os.environ.get("DEPLOYMENT_ENV") 
 if DEPLOYMENT_ENV == "local":
     API_URL = "http://127.0.0.1:8080/predict"
 else:
     API_URL = os.environ.get("API_URL")
+    
 # Load test data
 X_test = np.load(X_TEST_PATH)
 y_test = np.load(Y_TEST_PATH)

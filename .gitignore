@@ -12,7 +12,7 @@ ECS-ResNet/config/.env
 ECS-ResNet/credential/
 ECS-ResNet/credential/*.pem
 ECS-ResNet/test_env.py
-
+ECS-ResNet/generate_alb_ssl.sh
 # Ignore compiled Python files
 __pycache__/
 *.pyc
