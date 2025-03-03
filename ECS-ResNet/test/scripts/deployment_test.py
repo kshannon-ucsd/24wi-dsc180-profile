@@ -24,11 +24,18 @@ X_TEST_PATH = (DATA_DIR / X_TEST_PATH).resolve()
 Y_TEST_PATH = (DATA_DIR / Y_TEST_PATH).resolve()
 
 DEPLOYMENT_ENV = os.environ.get("DEPLOYMENT_ENV") 
+IMAGE_FORMAT = os.getenv("IMAGE_FORMAT", "PNG").upper()
+
+if IMAGE_FORMAT not in ["PNG", "JPEG"]:
+    raise ValueError("Unsupported IMAGE_FORMAT. Use 'PNG' or 'JPEG'.")
+
+MIME_TYPE = f"image/{IMAGE_FORMAT.lower()}"
+
 if DEPLOYMENT_ENV == "local":
     API_URL = "http://127.0.0.1:8080/predict"
 else:
     API_URL = os.environ.get("API_URL")
-    
+
 # Load test data
 X_test = np.load(X_TEST_PATH)
 y_test = np.load(Y_TEST_PATH)
@@ -44,11 +51,11 @@ image = Image.fromarray(image_array)
 
 # Save as a temporary in-memory file
 image_buffer = BytesIO()
-image.save(image_buffer, format="JPEG")
+image.save(image_buffer, format=IMAGE_FORMAT)
 image_buffer.seek(0)
 
 # Send the image to the API and Cloud Deployment Test
-files = {"image": ("image.jpg", image_buffer, "image/jpeg")}
+files = {"image": (f"image.{IMAGE_FORMAT.lower()}", image_buffer, MIME_TYPE)}
 response = requests.post(API_URL, files=files)
 
 print(response.json())
