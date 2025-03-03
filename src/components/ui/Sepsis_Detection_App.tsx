@@ -71,9 +71,11 @@ interface PatientMetadata {
 
 const ModelDemo = () => {
   const [currentFile, setCurrentFile] = useState<string | null>(null);
+  const [rawFile, setRawFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string>('');
   const [currentStage, setCurrentStage] = useState(0);
   const [anomalyResult, setAnomalyResult] = useState<string | null>(null);
+  const [apiError, setApiError] = useState<string | null>(null);
   const [sepsisRisk, setSepsisRisk] = useState<any>(null);
   const [showMetadataForm, setShowMetadataForm] = useState(false);
   const [metadata, setMetadata] = useState<PatientMetadata>({
@@ -94,19 +96,22 @@ const ModelDemo = () => {
     setAnomalyResult(null);
     setSepsisRisk(null);
     setShowMetadataForm(false);
+    setApiError(null);
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     setFileError('');
+    setApiError(null);
     resetAnalysis();
     
     if (file) {
-      if (!file.type.includes('png')) {
-        setFileError('Please upload only PNG images');
+      if (!file.type.includes('image')) {
+        setFileError('Please upload only image files');
         return;
       }
       
+      setRawFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
         setCurrentFile(reader.result as string);
@@ -122,15 +127,62 @@ const ModelDemo = () => {
     });
   };
 
-  // First stage: Anomaly Detection
+  // First stage: Anomaly Detection using the API
   const runAnomalyDetection = async () => {
+    if (!rawFile) {
+      setFileError('No file selected');
+      return;
+    }
+
+    setApiError(null);
     setCurrentStage(1);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setCurrentStage(2);
-    // Simulated API call for anomaly detection
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    setAnomalyResult('Anomaly Detected');
-    setShowMetadataForm(true);
+    
+    try {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      setCurrentStage(2);
+      
+      const formData = new FormData();
+      formData.append('image', rawFile);
+
+      const response = await fetch('http://resnet-chestxray-alb-1460798204.us-east-1.elb.amazonaws.com/predict', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log('API response:', data);
+      
+      // Check if the response contains a prediction
+      if (data && data.body) {
+        let result;
+        try {
+          // Try to parse the JSON string if it's in string format
+          const parsedBody = typeof data.body === 'string' ? JSON.parse(data.body) : data.body;
+          
+          if (parsedBody.prediction === 1) {
+            result = 'Anomaly Detected';
+          } else {
+            result = 'No Anomaly Detected';
+          }
+          
+          setAnomalyResult(result);
+          setShowMetadataForm(true);
+        } catch (e) {
+          console.error('Error parsing response:', e);
+          setApiError('Could not parse API response');
+        }
+      } else {
+        setApiError('Invalid API response format');
+      }
+    } catch (error) {
+      console.error('Error calling API:', error);
+      setApiError(`Error: ${error instanceof Error ? error.message : 'Unknown error occurred'}`);
+      setCurrentStage(1);  // Move back to upload stage
+    }
   };
 
   // Second stage: Sepsis Risk Assessment
@@ -150,6 +202,7 @@ const ModelDemo = () => {
   const loadExample = () => {
     setCurrentFile('./assets/xray.png');
     resetAnalysis();
+    setRawFile(null); // Reset raw file since we're using a URL
     setMetadata({
       bilirubin: '1.2',
       creatinine: '1.1',
@@ -163,9 +216,12 @@ const ModelDemo = () => {
       wbc: '8.5'
     });
   };
+  
   const resetAll = () => {
     setCurrentFile(null);
+    setRawFile(null);
     setFileError('');
+    setApiError(null);
     setCurrentStage(0);
     setAnomalyResult(null);
     setSepsisRisk(null);
@@ -197,7 +253,7 @@ const ModelDemo = () => {
             <div className="space-y-4">
               <InfoCard title="About This Demo">
                 This two-stage analysis system first detects anomalies in chest X-rays, then combines these results 
-                with patient lab results and vitals to assess sepsis risk. Upload a PNG image to begin the analysis.
+                with patient lab results and vitals to assess sepsis risk. Upload an image to begin the analysis.
               </InfoCard>
 
               <Card>
@@ -221,7 +277,7 @@ const ModelDemo = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-4">
                       <div className="flex flex-col space-y-2">
-                        <Label>Chest X-Ray Image (PNG only)</Label>
+                        <Label>Chest X-Ray Image</Label>
                         <div className="border-2 border-dashed rounded-lg p-4 text-center">
                           {currentFile ? (
                             <img 
@@ -232,17 +288,24 @@ const ModelDemo = () => {
                           ) : (
                             <div className="py-8">
                               <Upload className="mx-auto h-12 w-12 text-gray-400" />
-                              <p className="mt-2">Drop your PNG X-ray image here or click to upload</p>
+                              <p className="mt-2">Drop your X-ray image here or click to upload</p>
                             </div>
                           )}
                           <Input
                             type="file"
-                            accept=".png"
+                            accept="image/*"
                             onChange={handleFileChange}
                             className="mt-4"
                           />
                           {fileError && (
                             <p className="text-red-500 mt-2">{fileError}</p>
+                          )}
+                          {apiError && (
+                            <Alert variant="destructive" className="mt-2">
+                              <AlertCircle className="h-4 w-4" />
+                              <AlertTitle>Error</AlertTitle>
+                              <AlertDescription>{apiError}</AlertDescription>
+                            </Alert>
                           )}
                         </div>
                       </div>
@@ -340,7 +403,7 @@ const ModelDemo = () => {
                             <CardTitle>Stage 1: Anomaly Detection Results</CardTitle>
                           </CardHeader>
                           <CardContent>
-                            <Alert>
+                            <Alert variant={anomalyResult === 'Anomaly Detected' ? 'destructive' : 'default'}>
                               <AlertCircle className="h-4 w-4" />
                               <AlertTitle>Analysis Complete</AlertTitle>
                               <AlertDescription>{anomalyResult}</AlertDescription>
@@ -393,7 +456,6 @@ const ModelDemo = () => {
                   </CardHeader>
                   <CardContent>
                     <ul className="text-sm space-y-1">
-                      <li>PNG format only</li>
                       <li>Clear, high-quality chest X-ray</li>
                       <li>Proper orientation (AP/PA view)</li>
                       <li>No artifacts or overlays</li>
