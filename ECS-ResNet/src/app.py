@@ -6,13 +6,12 @@ from flask import Flask, request, jsonify
 from tensorflow.keras.preprocessing import image
 from model_loader import model
 from custom_encoder import NpEncoder
-from flask_cors import CORS
 
 # Suppress warnings
 warnings.filterwarnings("ignore")
 
 app = Flask(__name__)
-CORS(app)
+
 @app.route("/", methods=["GET"])
 def home():
     return jsonify({"message": "ECS Model API with CNN model is running!"})
