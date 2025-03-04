@@ -146,8 +146,6 @@ const ModelDemo = () => {
       formData.append('image', rawFile);
       
       const response = await fetch('https://dsc180-resnet.bobbyzhu.com/predict', {
-
-      const response = await fetch('https://dsc180-resnet.bobbyzhu.com/predict', {
         method: 'POST',
         body: formData
       });
