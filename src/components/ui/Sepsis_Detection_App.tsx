@@ -128,6 +128,7 @@ const ModelDemo = () => {
   };
 
   // First stage: Anomaly Detection using the API
+  // First stage: Anomaly Detection using the API
   const runAnomalyDetection = async () => {
     if (!rawFile) {
       setFileError('No file selected');
@@ -143,43 +144,33 @@ const ModelDemo = () => {
       
       const formData = new FormData();
       formData.append('image', rawFile);
-
-      const response = await fetch('https://resnet-chestxray-alb-1460798204.us-east-1.elb.amazonaws.com/predict', {
+      
+      const response = await fetch('https://dsc180-resnet.bobbyzhu.com/predict', {
         method: 'POST',
         body: formData
       });
-
       if (!response.ok) {
         throw new Error(`API error: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
-      console.log('API response:', data);
       
-      // Check if the response contains a prediction
-      if (data && data.body) {
+      // Direct access to the prediction field from the new API response format
+      if (data && data.prediction !== undefined) {
         let result;
-        try {
-          // Try to parse the JSON string if it's in string format
-          const parsedBody = typeof data.body === 'string' ? JSON.parse(data.body) : data.body;
-          
-          if (parsedBody.prediction === 1) {
-            result = 'Anomaly Detected';
-          } else {
-            result = 'No Anomaly Detected';
-          }
-          
-          setAnomalyResult(result);
-          setShowMetadataForm(true);
-        } catch (e) {
-          console.error('Error parsing response:', e);
-          setApiError('Could not parse API response');
+        
+        if (data.prediction === 1) {
+          result = 'Anomaly Detected';
+        } else {
+          result = 'No Anomaly Detected';
         }
+        
+        setAnomalyResult(result);
+        setShowMetadataForm(true);
       } else {
         setApiError('Invalid API response format');
       }
     } catch (error) {
-      console.error('Error calling API:', error);
       setApiError(`Error: ${error instanceof Error ? error.message : 'Unknown error occurred'}`);
       setCurrentStage(1);  // Move back to upload stage
     }
@@ -199,22 +190,34 @@ const ModelDemo = () => {
     });
   };
 
-  const loadExample = () => {
-    setCurrentFile('./assets/xray.png');
+  const loadExample = async () => {
     resetAnalysis();
-    setRawFile(null); // Reset raw file since we're using a URL
-    setMetadata({
-      bilirubin: '1.2',
-      creatinine: '1.1',
-      heart_rate: '88',
-      inr: '1.1',
-      mbp: '85',
-      platelet: '150',
-      ptt: '30',
-      resp_rate: '18',
-      sbp: '120',
-      wbc: '8.5'
-    });
+    
+    try {
+      const response = await fetch('./assets/xray.png');
+      if (!response.ok) throw new Error("Failed to load xray.png");
+      
+      const blob = await response.blob();
+      const file = new File([blob], "xray.png", { type: "image/png" });
+      
+      setCurrentFile(URL.createObjectURL(blob));
+      setRawFile(file);
+      
+      setMetadata({
+        bilirubin: '1.2',
+        creatinine: '1.1',
+        heart_rate: '88',
+        inr: '1.1',
+        mbp: '85',
+        platelet: '150',
+        ptt: '30',
+        resp_rate: '18',
+        sbp: '120',
+        wbc: '8.5'
+      });
+    } catch (err) {
+      setFileError(`Error loading example: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    }
   };
   
   const resetAll = () => {
