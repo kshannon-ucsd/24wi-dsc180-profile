@@ -144,7 +144,7 @@ const ModelDemo = () => {
       const formData = new FormData();
       formData.append('image', rawFile);
 
-      const response = await fetch('https://resnet-chestxray-alb-1460798204.us-east-1.elb.amazonaws.com/predict', {
+      const response = await fetch('https://dsc180-resnet.bobbyzhu.com/predict', {
         method: 'POST',
         body: formData
       });
