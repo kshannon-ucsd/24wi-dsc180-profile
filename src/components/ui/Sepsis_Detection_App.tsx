@@ -175,20 +175,54 @@ const ModelDemo = () => {
       setCurrentStage(1);  // Move back to upload stage
     }
   };
-
-  // Second stage: Sepsis Risk Assessment
-  const runSepsisRiskAssessment = async () => {
-    setCurrentStage(3);
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setCurrentStage(4);
-    // Simulated API call for sepsis risk assessment
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    setSepsisRisk({
-      risk1Day: 0.15,
-      risk2Day: 0.25,
-      risk3PlusDays: 0.35
+// Second stage: Sepsis Risk Assessment
+const runSepsisRiskAssessment = async () => {
+  setCurrentStage(3);
+  await new Promise(resolve => setTimeout(resolve, 1500));
+  setCurrentStage(4);
+  
+  try {
+    // Prepare data for the API - include all the metadata fields and the pneumonia result
+    const requestData = {
+      ...metadata,
+      // Convert string values to numbers
+      bilirubin: parseFloat(metadata.bilirubin),
+      creatinine: parseFloat(metadata.creatinine),
+      heart_rate: parseFloat(metadata.heart_rate),
+      inr: parseFloat(metadata.inr),
+      mbp: parseFloat(metadata.mbp),
+      platelet: parseFloat(metadata.platelet),
+      ptt: parseFloat(metadata.ptt),
+      resp_rate: parseFloat(metadata.resp_rate),
+      sbp: parseFloat(metadata.sbp),
+      wbc: parseFloat(metadata.wbc),
+      // Add pneumonia result from first stage
+      pneumonia: anomalyResult === 'Anomaly Detected' ? 1 : 0
+    };
+    
+    const response = await fetch('https://dsc180-rf.bobbyzhu.com/predict', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(requestData)
     });
-  };
+    
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status} ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    
+    // Set risk based on API response
+    setSepsisRisk({
+      hasSepsis: data.prediction === 1
+    });
+  } catch (error) {
+    setApiError(`Error: ${error instanceof Error ? error.message : 'Unknown error occurred'}`);
+    setCurrentStage(3);  // Move back to previous stage
+  }
+};
 
   const loadExample = async () => {
     resetAnalysis();
@@ -415,38 +449,24 @@ const ModelDemo = () => {
                         </Card>
                       )}
 
-                      {sepsisRisk && (
-                        <Card className="mt-0">
-                          <CardHeader>
-                            <CardTitle>Stage 2: Sepsis Risk Assessment</CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                            <div className="space-y-4">
-                              <div>
-                                <Label>1-Day Risk</Label>
-                                <Progress value={sepsisRisk.risk1Day * 100} className="mt-2" />
-                                <p className="text-sm text-gray-500 mt-1">
-                                  {(sepsisRisk.risk1Day * 100).toFixed(1)}% probability
-                                </p>
-                              </div>
-                              <div>
-                                <Label>2-Day Risk</Label>
-                                <Progress value={sepsisRisk.risk2Day * 100} className="mt-2" />
-                                <p className="text-sm text-gray-500 mt-1">
-                                  {(sepsisRisk.risk2Day * 100).toFixed(1)}% probability
-                                </p>
-                              </div>
-                              <div>
-                                <Label>3+ Days Risk</Label>
-                                <Progress value={sepsisRisk.risk3PlusDays * 100} className="mt-2" />
-                                <p className="text-sm text-gray-500 mt-1">
-                                  {(sepsisRisk.risk3PlusDays * 100).toFixed(1)}% probability
-                                </p>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      )}
+{sepsisRisk && (
+  <Card className="mt-0">
+    <CardHeader>
+      <CardTitle>Stage 2: Sepsis Risk Assessment</CardTitle>
+    </CardHeader>
+    <CardContent>
+      <Alert variant={sepsisRisk.hasSepsis ? 'destructive' : 'default'}>
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>Assessment Complete</AlertTitle>
+        <AlertDescription>
+          {sepsisRisk.hasSepsis 
+            ? 'Patient is at high risk for sepsis. Immediate clinical evaluation recommended.' 
+            : 'No sepsis detected. Continue routine monitoring.'}
+        </AlertDescription>
+      </Alert>
+    </CardContent>
+  </Card>
+)}
                     </div>
                   </div>
                 </CardContent>
