@@ -120,7 +120,9 @@ const ModelDemo = () => {
         setFileError('Please upload only image files');
         return;
       }
-
+      console.log(file.type)
+      console.log(file)
+console.log(file.type.includes('jpeg'))
         if (!file.type.includes('jpeg')) {
           setFileError('Please upload only JPEG images');
           return;
