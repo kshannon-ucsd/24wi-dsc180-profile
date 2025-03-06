@@ -387,9 +387,9 @@ const ModelDemo = () => {
                           )}
                           <Input
                             type="file"
-                            accept="image/*"
+                            accept=".jpeg"
                             onChange={handleFileChange}
-                            className="mt-3"
+                            className="mt-4"
                           />
                           {fileError && (
                             <p className="text-red-500 mt-2 text-sm">{fileError}</p>
