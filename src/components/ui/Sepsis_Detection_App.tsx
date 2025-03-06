@@ -121,7 +121,7 @@ const ModelDemo = () => {
         return;
       }
 
-        if (!file.type.includes('JPEG')) {
+        if (!file.type.includes('jpeg')) {
           setFileError('Please upload only JPEG images');
           return;
         }
@@ -276,6 +276,7 @@ const ModelDemo = () => {
       };
       console.log(getRandomXray())
       const response = await fetch(getRandomXray());
+      console.log(response)
       if (!response.ok) throw new Error("Failed to load xray.jpeg");
       
       const blob = await response.blob();
