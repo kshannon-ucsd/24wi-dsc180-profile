@@ -67,6 +67,9 @@ interface PatientMetadata {
   resp_rate: string;
   sbp: string;
   wbc: string;
+  temperature: string;
+  bands: string;
+  lactate: string;
 }
 
 const ModelDemo = () => {
@@ -89,7 +92,10 @@ const ModelDemo = () => {
     ptt: '',
     resp_rate: '',
     sbp: '',
-    wbc: ''
+    wbc: '',
+    temperature: '',
+    bands: '',
+    lactate: ''
   });
 
   const resetAnalysis = () => {
@@ -120,9 +126,7 @@ const ModelDemo = () => {
         setFileError('Please upload only image files');
         return;
       }
-      console.log(file.type)
-      console.log(file)
-console.log(file.type.includes('jpeg'))
+  
         if (!file.type.includes('jpeg')) {
           setFileError('Please upload only JPEG images');
           return;
@@ -218,6 +222,9 @@ console.log(file.type.includes('jpeg'))
         resp_rate: parseFloat(metadata.resp_rate),
         sbp: parseFloat(metadata.sbp),
         wbc: parseFloat(metadata.wbc),
+        temperature: parseFloat(metadata.temperature),
+        bands: parseFloat(metadata.bands),
+        lactate: parseFloat(metadata.lactate),
         // Add pneumonia result from first stage
         pneumonia: anomalyResult === 'Pneumonia Detected' ? 1 : 0
       };
@@ -276,9 +283,7 @@ console.log(file.type.includes('jpeg'))
         const randomIndex = Math.floor(Math.random() * xrayImages.length);
         return xrayImages[randomIndex];
       };
-      console.log(getRandomXray())
       const response = await fetch(getRandomXray());
-      console.log(response)
       if (!response.ok) throw new Error("Failed to load xray.jpeg");
       
       const blob = await response.blob();
@@ -297,11 +302,59 @@ console.log(file.type.includes('jpeg'))
         ptt: '30',
         resp_rate: '18',
         sbp: '120',
-        wbc: '8.5'
+        wbc: '8.5',
+        temperature: '38.1',
+        bands: '10',
+        lactate: '2.2'
       });
     } catch (err) {
       setFileError(`Error loading example: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
+  };
+  
+  // Function to generate random values within normal ranges
+  const generateRandomValues = () => {
+    // Define ranges for each parameter (min, max)
+    const ranges = {
+      bilirubin: [0.3, 1.2],
+      creatinine: [0.7, 1.3],
+      heart_rate: [60, 100],
+      inr: [0.8, 1.2],
+      mbp: [70, 100],
+      platelet: [150, 450],
+      ptt: [25, 35],
+      resp_rate: [12, 20],
+      sbp: [90, 120],
+      wbc: [4.5, 11.0],
+      temperature: [36.5, 37.5],
+      bands: [0, 10],
+      lactate: [0.5, 2.0]
+    };
+    
+    // Generate random value within range and format appropriately
+    const randomValue = (min: number, max: number, decimals: number = 1) => {
+      const value = min + Math.random() * (max - min);
+      return value.toFixed(decimals);
+    };
+    
+    // Create new metadata object with random values
+    const newMetadata: PatientMetadata = {
+      bilirubin: randomValue(ranges.bilirubin[0], ranges.bilirubin[1]),
+      creatinine: randomValue(ranges.creatinine[0], ranges.creatinine[1]),
+      heart_rate: randomValue(ranges.heart_rate[0], ranges.heart_rate[1], 0),
+      inr: randomValue(ranges.inr[0], ranges.inr[1]),
+      mbp: randomValue(ranges.mbp[0], ranges.mbp[1], 0),
+      platelet: randomValue(ranges.platelet[0], ranges.platelet[1], 0),
+      ptt: randomValue(ranges.ptt[0], ranges.ptt[1], 0),
+      resp_rate: randomValue(ranges.resp_rate[0], ranges.resp_rate[1], 0),
+      sbp: randomValue(ranges.sbp[0], ranges.sbp[1], 0),
+      wbc: randomValue(ranges.wbc[0], ranges.wbc[1]),
+      temperature: randomValue(ranges.temperature[0], ranges.temperature[1], 1),
+      bands: randomValue(ranges.bands[0], ranges.bands[1], 0),
+      lactate: randomValue(ranges.lactate[0], ranges.lactate[1])
+    };
+    
+    setMetadata(newMetadata);
   };
   
   const resetAll = () => {
@@ -324,7 +377,10 @@ console.log(file.type.includes('jpeg'))
       ptt: '',
       resp_rate: '',
       sbp: '',
-      wbc: ''
+      wbc: '',
+      temperature: '',
+      bands: '',
+      lactate: ''
     });
   };
 
@@ -409,20 +465,168 @@ console.log(file.type.includes('jpeg'))
 
                       {showMetadataForm && (
                         <div className="space-y-3">
-                          <Label className="text-indigo-800 font-medium">Patient Lab Results & Vitals</Label>
-                          <div className="grid grid-cols-2 gap-3">
-                            {Object.entries(metadata).map(([key, value]) => (
-                              <div key={key} className="space-y-1">
-                                <Label className="text-sm">{key.replace('_', ' ').toUpperCase()}</Label>
-                                <Input
-                                  name={key}
-                                  value={value}
-                                  onChange={handleMetadataChange}
-                                  placeholder="0.0"
-                                  className="h-8"
-                                />
+                          <div className="flex items-center justify-between mb-2">
+                            <Label className="text-indigo-800 font-medium">Patient Lab Results & Vitals</Label>
+                            <div className="flex items-center space-x-2">
+                              <Button 
+                                onClick={generateRandomValues} 
+                                size="sm" 
+                                variant="outline" 
+                                className="h-7 py-0 px-2 text-xs bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100"
+                              >
+                                Generate Random Values
+                              </Button>
+                              <span className="text-xs text-indigo-600 bg-indigo-50 px-2 py-1 rounded-md">All fields required</span>
+                            </div>
+                          </div>
+                          <div className="bg-white p-3 rounded-lg border border-indigo-100 shadow-sm">
+                            <div className="mb-2">
+                              <h4 className="text-sm font-medium text-indigo-800 mb-1">Vital Signs</h4>
+                              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-x-2 gap-y-1">
+                                <div className="flex items-center space-x-1">
+                                  <Label className="text-xs whitespace-nowrap">Heart Rate:</Label>
+                                  <Input
+                                    name="heart_rate"
+                                    value={metadata.heart_rate}
+                                    onChange={handleMetadataChange}
+                                    placeholder="bpm"
+                                    className="h-7 text-sm flex-1 min-w-0"
+                                  />
+                                </div>
+                                <div className="flex items-center space-x-1">
+                                  <Label className="text-xs whitespace-nowrap">SBP:</Label>
+                                  <Input
+                                    name="sbp"
+                                    value={metadata.sbp}
+                                    onChange={handleMetadataChange}
+                                    placeholder="mmHg"
+                                    className="h-7 text-sm flex-1 min-w-0"
+                                  />
+                                </div>
+                                <div className="flex items-center space-x-1">
+                                  <Label className="text-xs whitespace-nowrap">MBP:</Label>
+                                  <Input
+                                    name="mbp"
+                                    value={metadata.mbp}
+                                    onChange={handleMetadataChange}
+                                    placeholder="mmHg"
+                                    className="h-7 text-sm flex-1 min-w-0"
+                                  />
+                                </div>
+                                <div className="flex items-center space-x-1">
+                                  <Label className="text-xs whitespace-nowrap">Resp Rate:</Label>
+                                  <Input
+                                    name="resp_rate"
+                                    value={metadata.resp_rate}
+                                    onChange={handleMetadataChange}
+                                    placeholder="/min"
+                                    className="h-7 text-sm flex-1 min-w-0"
+                                  />
+                                </div>
+                                <div className="flex items-center space-x-1">
+                                  <Label className="text-xs whitespace-nowrap">Temp:</Label>
+                                  <Input
+                                    name="temperature"
+                                    value={metadata.temperature}
+                                    onChange={handleMetadataChange}
+                                    placeholder="°C"
+                                    className="h-7 text-sm flex-1 min-w-0"
+                                  />
+                                </div>
                               </div>
-                            ))}
+                            </div>
+                            
+                            <div className="mb-2">
+                              <h4 className="text-sm font-medium text-indigo-800 mb-1">Blood Parameters</h4>
+                              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-x-2 gap-y-1">
+                                <div className="flex items-center space-x-1">
+                                  <Label className="text-xs whitespace-nowrap">WBC:</Label>
+                                  <Input
+                                    name="wbc"
+                                    value={metadata.wbc}
+                                    onChange={handleMetadataChange}
+                                    placeholder="K/µL"
+                                    className="h-7 text-sm flex-1 min-w-0"
+                                  />
+                                </div>
+                                <div className="flex items-center space-x-1">
+                                  <Label className="text-xs whitespace-nowrap">Bands:</Label>
+                                  <Input
+                                    name="bands"
+                                    value={metadata.bands}
+                                    onChange={handleMetadataChange}
+                                    placeholder="%"
+                                    className="h-7 text-sm flex-1 min-w-0"
+                                  />
+                                </div>
+                                <div className="flex items-center space-x-1">
+                                  <Label className="text-xs whitespace-nowrap">Platelet:</Label>
+                                  <Input
+                                    name="platelet"
+                                    value={metadata.platelet}
+                                    onChange={handleMetadataChange}
+                                    placeholder="K/µL"
+                                    className="h-7 text-sm flex-1 min-w-0"
+                                  />
+                                </div>
+                                <div className="flex items-center space-x-1">
+                                  <Label className="text-xs whitespace-nowrap">INR:</Label>
+                                  <Input
+                                    name="inr"
+                                    value={metadata.inr}
+                                    onChange={handleMetadataChange}
+                                    placeholder="ratio"
+                                    className="h-7 text-sm flex-1 min-w-0"
+                                  />
+                                </div>
+                                <div className="flex items-center space-x-1">
+                                  <Label className="text-xs whitespace-nowrap">PTT:</Label>
+                                  <Input
+                                    name="ptt"
+                                    value={metadata.ptt}
+                                    onChange={handleMetadataChange}
+                                    placeholder="sec"
+                                    className="h-7 text-sm flex-1 min-w-0"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <div>
+                              <h4 className="text-sm font-medium text-indigo-800 mb-1">Chemistry</h4>
+                              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-x-2 gap-y-1">
+                                <div className="flex items-center space-x-1">
+                                  <Label className="text-xs whitespace-nowrap">Creatinine:</Label>
+                                  <Input
+                                    name="creatinine"
+                                    value={metadata.creatinine}
+                                    onChange={handleMetadataChange}
+                                    placeholder="mg/dL"
+                                    className="h-7 text-sm flex-1 min-w-0"
+                                  />
+                                </div>
+                                <div className="flex items-center space-x-1">
+                                  <Label className="text-xs whitespace-nowrap">Bilirubin:</Label>
+                                  <Input
+                                    name="bilirubin"
+                                    value={metadata.bilirubin}
+                                    onChange={handleMetadataChange}
+                                    placeholder="mg/dL"
+                                    className="h-7 text-sm flex-1 min-w-0"
+                                  />
+                                </div>
+                                <div className="flex items-center space-x-1">
+                                  <Label className="text-xs whitespace-nowrap">Lactate:</Label>
+                                  <Input
+                                    name="lactate"
+                                    value={metadata.lactate}
+                                    onChange={handleMetadataChange}
+                                    placeholder="mmol/L"
+                                    className="h-7 text-sm flex-1 min-w-0"
+                                  />
+                                </div>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       )}
@@ -600,6 +804,9 @@ console.log(file.type.includes('jpeg'))
                       <div>Resp Rate: 12-20/min</div>
                       <div>Systolic BP: 90-120 mmHg</div>
                       <div>WBC: 4.5-11.0 K/µL</div>
+                      <div>Temperature: 36.5-37.5°C</div>
+                      <div>Bands: 0-10%</div>
+                      <div>Lactate: 0.5-2.0 mmol/L</div>
                     </div>
                   </CardContent>
                 </Card>
