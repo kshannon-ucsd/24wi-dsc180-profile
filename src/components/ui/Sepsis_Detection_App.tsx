@@ -82,6 +82,7 @@ const ModelDemo = () => {
   const [sepsisRisk, setSepsisRisk] = useState<any>(null);
   const [showMetadataForm, setShowMetadataForm] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [runFullPipeline, setRunFullPipeline] = useState(false);
   const [metadata, setMetadata] = useState<PatientMetadata>({
     bilirubin: '',
     creatinine: '',
@@ -113,6 +114,27 @@ const ModelDemo = () => {
     setCurrentStage(0);
     setApiError(null);
     setIsProcessing(false);
+    setRunFullPipeline(true);
+    
+    // Automatically start pneumonia detection if file is available
+    if (rawFile) {
+      setTimeout(() => {
+        runAnomalyDetection();
+      }, 300);
+    }
+  };
+
+  // Function to restart just the sepsis risk assessment
+  const restartSepsisAssessment = () => {
+    setSepsisRisk(null);
+    setCurrentStage(2); // Set back to pneumonia detection completed stage
+    setApiError(null);
+    setIsProcessing(false);
+    
+    // Automatically run the sepsis risk assessment
+    setTimeout(() => {
+      runSepsisRiskAssessment();
+    }, 300);
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -189,6 +211,14 @@ const ModelDemo = () => {
         setAnomalyResult(result);
         setShowMetadataForm(true);
         setIsProcessing(false);
+        
+        // Automatically run sepsis risk assessment if this is from a full pipeline rerun
+        if (runFullPipeline) {
+          setRunFullPipeline(false);
+          setTimeout(() => {
+            runSepsisRiskAssessment();
+          }, 500);
+        }
       } else {
         setApiError('Invalid API response format');
         setIsProcessing(false);
@@ -673,15 +703,27 @@ const ModelDemo = () => {
                         <Button onClick={loadExample} variant="outline" className="border-indigo-300 text-indigo-700">
                           Load Example
                         </Button>
-                        {(anomalyResult || sepsisRisk) && (
-                          <Button 
-                            onClick={rerunAnalysis} 
-                            variant="secondary"
-                            className="bg-indigo-100 text-indigo-800 flex items-center"
-                          >
-                            <RotateCw className="mr-1 h-4 w-4" />
-                            Re-run Analysis
-                          </Button>
+                        {sepsisRisk && (
+                          <>
+                            <Button 
+                              onClick={restartSepsisAssessment} 
+                              variant="secondary"
+                              className="bg-indigo-50 text-indigo-800 flex items-center"
+                              disabled={isProcessing}
+                            >
+                              <RefreshCw className="mr-1 h-4 w-4" />
+                              Rerun Sepsis Assessment
+                            </Button>
+                            <Button 
+                              onClick={rerunAnalysis} 
+                              variant="secondary"
+                              className="bg-indigo-100 text-indigo-800 flex items-center"
+                              disabled={isProcessing}
+                            >
+                              <RotateCw className="mr-1 h-4 w-4" />
+                              Rerun Full Analysis
+                            </Button>
+                          </>
                         )}
                       </div>
                     </div>
