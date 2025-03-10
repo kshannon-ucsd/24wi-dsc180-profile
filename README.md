@@ -111,10 +111,10 @@ This application is a clinical decision support tool. Results should be interpre
 
 ## 📸 Screenshots
 
-![Application Screenshot 1](/assets/initial_upload_screen.png)
+![Application Screenshot 1](/public/assets/initial_upload_screen.png)
 *Initial Upload Screen*
 
-![Application Screenshot 2](/assets/result_display_screen.png)
+![Application Screenshot 2](/public/assets/result_display_screen.png)
 *Results Display Screen*
 
 ## 🧪 Model Details
