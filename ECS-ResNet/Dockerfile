@@ -15,7 +15,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
 # Copy all necessary application files
-COPY src/app.py src/model_loader.py src/custom_encoder.py /app/
+COPY src/app.py src/model_loader.py /app/
 
 # Expose the container port for the Flask API
 EXPOSE 8080

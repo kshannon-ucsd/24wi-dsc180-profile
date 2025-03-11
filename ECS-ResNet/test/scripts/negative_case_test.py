@@ -33,22 +33,30 @@ MIME_TYPE = f"image/{IMAGE_FORMAT.lower()}"
 
 if DEPLOYMENT_ENV == "local":
     API_URL = "http://127.0.0.1:8080/predict"
-    print("this is from local")
+    print("This is from local")
 else:
     API_URL = os.environ.get("API_URL")
-    print("this is from cloud")
+    print("This is from cloud")
 
 # Load test data
 X_test = np.load(X_TEST_PATH)
 y_test = np.load(Y_TEST_PATH)
 
-
 print("X_test shape:", X_test.shape)
 print("y_test shape:", y_test.shape)
-print("y_test first result:", y_test[0])
 
-# Convert first test image to a PIL image
-image_array = (X_test[0] * 255).astype(np.uint8)  # Scale if needed
+# Find an index where y_test == 0 (negative example)
+negative_indices = np.where(y_test == 0)[0]
+
+if len(negative_indices) == 0:
+    raise ValueError("No negative examples (y_test == 0) found in the dataset.")
+
+# Select the first negative example found
+negative_index = negative_indices[0]
+print(f"Using test image at index {negative_index} with y_test = 0")
+
+# Convert selected negative test image to a PIL image
+image_array = (X_test[negative_index] * 255).astype(np.uint8)  # Scale if needed
 image = Image.fromarray(image_array)
 
 # Save as a temporary in-memory file
@@ -60,4 +68,4 @@ image_buffer.seek(0)
 files = {"image": (f"image.{IMAGE_FORMAT.lower()}", image_buffer, MIME_TYPE)}
 response = requests.post(API_URL, files=files)
 
-print(response.json())
+print("API Response:", response.json())

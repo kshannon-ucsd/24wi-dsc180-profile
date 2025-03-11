@@ -60,9 +60,12 @@ def check_s3_model_exists():
 
 def load_or_download_model():
     """Load the model from local storage or download from S3 if needed."""
+
     if os.path.exists(MODEL_PATH):
+
         print(f"📂 Loading model from {MODEL_PATH}...")
     else:
+
         if not S3_BUCKET_NAME:
             raise ValueError("❌ No S3 bucket specified for model storage.")
 
