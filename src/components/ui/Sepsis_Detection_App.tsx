@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './card';
 import { Button } from './button';
@@ -9,6 +9,7 @@ import { Label } from './label';
 import { Progress } from './progress';
 import { AlertCircle, Upload, ChevronRight, Activity, LineChart, BrainCircuit, Info, RefreshCw, RotateCw } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from './alert';
+import * as tf from '@tensorflow/tfjs';
 
 const AnimatedBackground = () => (
   <div className="fixed inset-0 -z-10 overflow-hidden">
@@ -73,6 +74,12 @@ interface PatientMetadata {
 }
 
 const ModelDemo = () => {
+  const [resnetModel, setResnetModel] = useState<any>(null);
+  const [resnetModelLoading, setResnetModelLoading] = useState(false);
+  const [resnetModelError, setResnetModelError] = useState<string | null>(null);
+  const [model, setModel] = useState<any>(null);
+  const [modelLoading, setModelLoading] = useState(false);
+  const [modelError, setModelError] = useState<string | null>(null);
   const [currentFile, setCurrentFile] = useState<string | null>(null);
   const [rawFile, setRawFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string>('');
@@ -116,7 +123,6 @@ const ModelDemo = () => {
     setIsProcessing(false);
     setRunFullPipeline(true);
     
-    // Automatically start pneumonia detection if file is available
     if (rawFile) {
       setTimeout(() => {
         runAnomalyDetection();
@@ -124,14 +130,12 @@ const ModelDemo = () => {
     }
   };
 
-  // Function to restart just the sepsis risk assessment
   const restartSepsisAssessment = () => {
     setSepsisRisk(null);
-    setCurrentStage(2); // Set back to pneumonia detection completed stage
+    setCurrentStage(2);
     setApiError(null);
     setIsProcessing(false);
     
-    // Automatically run the sepsis risk assessment
     setTimeout(() => {
       runSepsisRiskAssessment();
     }, 300);
@@ -149,10 +153,10 @@ const ModelDemo = () => {
         return;
       }
   
-        if (!file.type.includes('jpeg')) {
-          setFileError('Please upload only JPEG images');
-          return;
-        }
+      if (!file.type.includes('jpeg')) {
+        setFileError('Please upload only JPEG images');
+        return;
+      }
       
       setRawFile(file);
       const reader = new FileReader();
@@ -170,7 +174,29 @@ const ModelDemo = () => {
     });
   };
 
-  // First stage: Anomaly Detection using the API
+  useEffect(() => {
+    async function loadResnetModel() {
+      try {
+        setResnetModelLoading(true);
+        
+        const model = await tf.loadGraphModel('./assets/models/web_model/model.json');
+        
+        const dummyInput = tf.zeros([1, 224, 224, 3]);
+        await model.predict(dummyInput);
+        dummyInput.dispose();
+        
+        setResnetModel(model);
+        setResnetModelLoading(false);
+      } catch (error) {
+        console.error('Error loading ResNet model:', error);
+        setResnetModelError((error as Error).message);
+        setResnetModelLoading(false);
+      }
+    }
+    
+    loadResnetModel();
+  }, []);
+
   const runAnomalyDetection = async () => {
     if (!rawFile) {
       setFileError('No file selected');
@@ -185,43 +211,65 @@ const ModelDemo = () => {
       await new Promise(resolve => setTimeout(resolve, 1000));
       setCurrentStage(2);
       
-      const formData = new FormData();
-      formData.append('image', rawFile);
-      
-      const response = await fetch('https://dsc180-resnet.bobbyzhu.com/predict', {
-        method: 'POST',
-        body: formData
-      });
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status} ${response.statusText}`);
+      if (!resnetModel) {
+        throw new Error('ResNet model not loaded yet. Please wait or refresh the page.');
       }
-
-      const data = await response.json();
       
-      // Direct access to the prediction field from the new API response format
-      if (data && data.prediction !== undefined) {
-        let result;
+      const img = new Image();
+      img.src = URL.createObjectURL(rawFile);
+      
+      await new Promise(resolve => {
+        img.onload = resolve;
+      });
+      
+      const tensorInput = tf.tidy(() => {
+        let imageTensor = tf.browser.fromPixels(img);
         
-        if (data.prediction === 1) {
-          result = 'Pneumonia Detected';
-        } else {
-          result = 'No Pneumonia Detected';
-        }
+        imageTensor = imageTensor.resizeBilinear([256, 256]);
         
-        setAnomalyResult(result);
-        setShowMetadataForm(true);
-        setIsProcessing(false);
+        const cropSize = 224 / 256;
+        const [height, width] = imageTensor.shape.slice(0, 2);
+        const centerHeight = Math.round(height * cropSize);
+        const centerWidth = Math.round(width * cropSize);
+        const startHeight = Math.round((height - centerHeight) / 2);
+        const startWidth = Math.round((width - centerWidth) / 2);
         
-        // Automatically run sepsis risk assessment if this is from a full pipeline rerun
-        if (runFullPipeline) {
-          setRunFullPipeline(false);
-          setTimeout(() => {
-            runSepsisRiskAssessment();
-          }, 500);
-        }
+        imageTensor = imageTensor.slice(
+          [startHeight, startWidth, 0], 
+          [centerHeight, centerWidth, 3]
+        );
+        
+        imageTensor = imageTensor.toFloat().div(255);
+        
+        imageTensor = imageTensor.mul(2).sub(1);
+        
+        return imageTensor.expandDims(0);
+      });
+      
+      const prediction = await resnetModel.predict(tensorInput);
+      const predictionData = await prediction.data();
+      tensorInput.dispose();
+      prediction.dispose();
+      
+      const predictionValue = predictionData[0];
+      const isPneumonia = predictionValue < 0.974;
+      
+      let result;
+      if (isPneumonia) {
+        result = 'Pneumonia Detected';
       } else {
-        setApiError('Invalid API response format');
-        setIsProcessing(false);
+        result = 'No Pneumonia Detected';
+      }
+      
+      setAnomalyResult(result);
+      setShowMetadataForm(true);
+      setIsProcessing(false);
+      
+      if (runFullPipeline) {
+        setRunFullPipeline(false);
+        setTimeout(() => {
+          runSepsisRiskAssessment();
+        }, 500);
       }
     } catch (error) {
       setApiError(`Error: ${error instanceof Error ? error.message : 'Unknown error occurred'}`);
@@ -230,7 +278,45 @@ const ModelDemo = () => {
     }
   };
 
-  // Second stage: Sepsis Risk Assessment
+  const loadCatBoostModel = async () => {
+    try {
+      setModelLoading(true);
+      const response = await fetch('./assets/models/model.json');
+      const modelJson = await response.json();
+      setModel(modelJson);
+      setModelLoading(false);
+    } catch (error) {
+      console.error('Error loading model:', error);
+      setModelError((error as Error).message);
+      setModelLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadCatBoostModel();
+  }, []);
+
+  const predictWithCatBoostJson = (modelJson: any, features: number[]) => {
+    let prediction = 0;
+    const trees = modelJson.oblivious_trees;
+    
+    for (let treeIdx = 0; treeIdx < trees.length; treeIdx++) {
+      const tree = trees[treeIdx];
+      let treeIndex = 0;
+      
+      for (let depth = 0; depth < tree.splits.length; depth++) {
+        const split = tree.splits[depth];
+        const featureIndex = split.float_feature_index;
+        const condition = features[featureIndex] <= split.border;
+        treeIndex = (treeIndex * 2) + (condition ? 0 : 1);
+      }
+      
+      prediction += tree.leaf_values[treeIndex];
+    }
+    
+    return 1 / (1 + Math.exp(-prediction));
+  };
+
   const runSepsisRiskAssessment = async () => {
     setCurrentStage(3);
     setIsProcessing(true);
@@ -238,44 +324,31 @@ const ModelDemo = () => {
     setCurrentStage(4);
     
     try {
-      // Prepare data for the API - include all the metadata fields and the pneumonia result
-      const requestData = {
-        ...metadata,
-        // Convert string values to numbers
-        bilirubin: parseFloat(metadata.bilirubin),
-        creatinine: parseFloat(metadata.creatinine),
-        heart_rate: parseFloat(metadata.heart_rate),
-        inr: parseFloat(metadata.inr),
-        mbp: parseFloat(metadata.mbp),
-        platelet: parseFloat(metadata.platelet),
-        ptt: parseFloat(metadata.ptt),
-        resp_rate: parseFloat(metadata.resp_rate),
-        sbp: parseFloat(metadata.sbp),
-        wbc: parseFloat(metadata.wbc),
-        temperature: parseFloat(metadata.temperature),
-        bands: parseFloat(metadata.bands),
-        lactate: parseFloat(metadata.lactate),
-        // Add pneumonia result from first stage
-        pneumonia: anomalyResult === 'Pneumonia Detected' ? 1 : 0
-      };
-      
-      const response = await fetch('https://dsc180-rf.bobbyzhu.com/predict', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(requestData)
-      });
-      
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status} ${response.statusText}`);
+      if (!model) {
+        throw new Error('Model not loaded yet. Please wait or refresh the page.');
       }
       
-      const data = await response.json();
+      const features = [
+        parseFloat(metadata.bilirubin),
+        parseFloat(metadata.creatinine),
+        parseFloat(metadata.heart_rate),
+        parseFloat(metadata.inr),
+        parseFloat(metadata.mbp),
+        parseFloat(metadata.platelet),
+        parseFloat(metadata.ptt),
+        parseFloat(metadata.resp_rate),
+        parseFloat(metadata.sbp),
+        parseFloat(metadata.wbc),
+        parseFloat(metadata.temperature),
+        parseFloat(metadata.bands),
+        parseFloat(metadata.lactate),
+        anomalyResult === 'Pneumonia Detected' ? 1.0 : 0.0
+      ];
+      const predictionValue = predictWithCatBoostJson(model, features);
+      const hasSepsis = predictionValue > 0.88;
       
-      // Set risk based on API response
       setSepsisRisk({
-        hasSepsis: data.prediction === 1
+        hasSepsis: hasSepsis
       });
       setIsProcessing(false);
     } catch (error) {
@@ -308,14 +381,12 @@ const ModelDemo = () => {
         './assets/xrays/P_Xray8.jpeg',
       ];
       
-      // Helper function to pick a random image.
       const getRandomXray = (): string => {
         const randomIndex = Math.floor(Math.random() * xrayImages.length);
         return xrayImages[randomIndex];
       };
       const response = await fetch(getRandomXray());
       if (!response.ok) throw new Error("Failed to load xray.jpeg");
-      
       const blob = await response.blob();
       const file = new File([blob], "xray.jpeg", { type: "image/jpeg" });
       
@@ -323,28 +394,26 @@ const ModelDemo = () => {
       setRawFile(file);
       
       setMetadata({
-        bilirubin: '1.2',
+        bilirubin: '0.9',
         creatinine: '1.1',
-        heart_rate: '88',
-        inr: '1.1',
-        mbp: '85',
-        platelet: '150',
-        ptt: '30',
-        resp_rate: '18',
-        sbp: '120',
-        wbc: '8.5',
-        temperature: '38.1',
-        bands: '10',
-        lactate: '2.2'
+        heart_rate: '74',
+        inr: '1.0',
+        mbp: '97',
+        platelet: '354',
+        ptt: '32',
+        resp_rate: '20',
+        sbp: '111',
+        wbc: '10.7',
+        temperature: '37.5',
+        bands: '6',
+        lactate: '0.6'
       });
     } catch (err) {
       setFileError(`Error loading example: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
   };
   
-  // Function to generate random values within normal ranges
   const generateRandomValues = () => {
-    // Define ranges for each parameter (min, max)
     const ranges = {
       bilirubin: [0.3, 1.2],
       creatinine: [0.7, 1.3],
@@ -361,13 +430,11 @@ const ModelDemo = () => {
       lactate: [0.5, 2.0]
     };
     
-    // Generate random value within range and format appropriately
     const randomValue = (min: number, max: number, decimals: number = 1) => {
       const value = min + Math.random() * (max - min);
       return value.toFixed(decimals);
     };
     
-    // Create new metadata object with random values
     const newMetadata: PatientMetadata = {
       bilirubin: randomValue(ranges.bilirubin[0], ranges.bilirubin[1]),
       creatinine: randomValue(ranges.creatinine[0], ranges.creatinine[1]),
@@ -413,6 +480,7 @@ const ModelDemo = () => {
       lactate: ''
     });
   };
+
 
   return (
     <>
